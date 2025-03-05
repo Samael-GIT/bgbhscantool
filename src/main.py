@@ -1,18 +1,59 @@
 #!/usr/bin/env python3
+import os
+import sys
+from pathlib import Path
+
+# Ajouter le répertoire src au PYTHONPATH
+current_dir = Path(__file__).resolve().parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
 # -*- coding: utf-8 -*-
 
 import argparse
-import os
-import sys
 import warnings
-from pathlib import Path
+
+# Ajouter setuptools pour la configuration du package
+from setuptools import setup, find_packages
+
+# Configuration du package si exécuté comme setup.py
+if __name__ == "__main__" and sys.argv[1:2] == ["install"]:
+    setup(
+        name="bgbhscan",
+        version="1.0.0",
+        description="Outil d'automatisation pour Bug Bounty",
+        author="Samael",
+        packages=find_packages(),
+        install_requires=[
+            'requests>=2.31.0',
+            'dnspython>=2.4.2',
+            'beautifulsoup4>=4.12.2',
+            'lxml>=4.9.3',
+            'pyOpenSSL>=23.2.0',
+            'cryptography>=41.0.5',
+            'urllib3>=2.0.7',
+            'xmltodict>=0.13.0',
+            'defusedxml>=0.7.1',
+            'colorama>=0.4.6',
+            'tqdm>=4.66.1',
+            'click>=8.1.7',
+            'python-whois>=0.8.0',
+            'netaddr>=0.9.0',
+            'ipaddress>=1.0.23'
+        ],
+        entry_points={
+            'console_scripts': [
+                'bgbhscan=main:main',
+            ],
+        },
+    )
+    sys.exit(0)
 
 # Ajouter les chemins d'importation
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 
 # Correction des chemins d'importation
 def _fix_import_paths():

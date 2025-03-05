@@ -62,6 +62,7 @@ cd bgbhscan
 chmod +x install.sh
 ./install.sh
 
+### Méthode 2: Installation manuelle
 
 # Cloner le dépôt
 git clone https://github.com/samael/bgbhscan.git

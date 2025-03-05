@@ -28,3 +28,7 @@ __pycache__/
 
 # Autres fichiers spécifiques
 .DS_Store
+src/bgbhscan.sh
+.gitignore
+.gitignore
+src/bgbhscan.sh

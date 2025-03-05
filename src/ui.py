@@ -734,7 +734,7 @@ class ConsoleUI:
                 print(f"  {BRIGHT_GREEN}exploit{RESET}   - Tests d'exploitation basiques (SQLi, XSS, etc.)")
                 print(f"  {BRIGHT_GREEN}full{RESET}      - Exécution complète de toutes les étapes ci-dessus\n")
                 print(f"{BRIGHT_WHITE}Pour plus d'informations, consultez la documentation:{RESET}")
-                print("  https://github.com/votre-nom/bgbhscan/docs\n")
+                print("  https://github.com/Samael-GIT/bgbhscan/README.md\n")
                 input(f"{BRIGHT_YELLOW}Appuyez sur Entrée pour continuer...{RESET}")
             
             elif main_choice == 5:  # Diagnostique et débogage
