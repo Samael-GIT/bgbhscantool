@@ -216,3 +216,29 @@ def main():
 # Point d'entrée
 if __name__ == "__main__":
     main()
+
+# Fonction d'activation automatique de l'environnement virtuel
+def __activate_venv():
+    import os
+    import sys
+    from pathlib import Path
+    
+    # Trouver le chemin de base de l'installation
+    script_path = Path(__file__).resolve()
+    base_dir = script_path.parent.parent
+    
+    # Vérifier et activer l'environnement virtuel si nécessaire
+    venv_path = base_dir / "venv"
+    if venv_path.exists():
+        venv_bin = venv_path / "bin"
+        if not sys.prefix.startswith(str(venv_path)):
+            # L'environnement n'est pas activé, on doit le faire manuellement
+            import subprocess
+            
+            # Réexécuter le script avec l'interpréteur Python de l'environnement virtuel
+            python_path = venv_bin / "python"
+            os.execv(str(python_path), [str(python_path)] + sys.argv)
+
+# Activer l'environnement virtuel si ce script est exécuté directement
+if __name__ == "__main__":
+    __activate_venv()
