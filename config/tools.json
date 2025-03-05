@@ -1,0 +1,61 @@
+{
+    "version": "1.0.0",
+    "logging": {
+        "level": "INFO",
+        "file": "bgbhscan.log"
+    },
+    "output": {
+        "directory": "reports",
+        "formats": ["json", "html"]
+    },
+    "tools": {
+        "nmap": {
+            "path": "nmap",
+            "enabled": true,
+            "arguments": "-sV -sC"
+        },
+        "whois": {
+            "path": "whois",
+            "enabled": true
+        },
+        "whatweb": {
+            "path": "whatweb",
+            "enabled": true,
+            "arguments": "-a 3"
+        },
+        "nikto": {
+            "path": "nikto",
+            "enabled": true
+        },
+        "cutycapt": {
+            "path": "cutycapt",
+            "enabled": true
+        },
+        "zap": {
+            "path": "zap-cli",
+            "enabled": false
+        }
+    },
+    "settings": {
+        "passive": {
+            "timeout": 120,
+            "enable_whois": true,
+            "enable_dns": true
+        },
+        "active": {
+            "timeout": 300,
+            "max_threads": 10,
+            "ports_default": "1-1000"
+        },
+        "vulnerability": {
+            "timeout": 600,
+            "max_threads": 5
+        },
+        "proxy": {
+            "enable": false,
+            "http": "",
+            "https": "",
+            "socks": ""
+        }
+    }
+}

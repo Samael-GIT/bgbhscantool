@@ -1,0 +1,45 @@
+{
+    "metadata": {
+        "timestamp": "2025-03-05T02:02:21.431602",
+        "report_type": "active_recon",
+        "version": "1.0.0"
+    },
+    "results": {
+        "port_scan": {
+            "hosts": [
+                {
+                    "ports": [
+                        {
+                            "number": "80",
+                            "protocol": "tcp",
+                            "state": "open",
+                            "service": {
+                                "name": "http",
+                                "product": "AkamaiGHost",
+                                "version": ""
+                            }
+                        },
+                        {
+                            "number": "443",
+                            "protocol": "tcp",
+                            "state": "open",
+                            "service": {
+                                "name": "http",
+                                "product": "AkamaiGHost",
+                                "version": ""
+                            }
+                        }
+                    ],
+                    "ip": "23.192.228.84"
+                }
+            ]
+        },
+        "technologies": {
+            "raw": "[\n{\"target\":\"http://example.com\",\"http_status\":200,\"request_config\":{\"headers\":{\"User-Agent\":\"WhatWeb/0.5.5\"}},\"plugins\":{\"Country\":{\"string\":[\"UNITED STATES\"],\"module\":[\"US\"]},\"HTML5\":{},\"IP\":{\"string\":[\"23.215.0.136\"]},\"Title\":{\"string\":[\"Example Domain\"]}}}\n\u001b[1m\u001b[34mhttp://example.com\u001b[0m [200 OK] \u001b[1mCountry\u001b[0m[\u001b[0m\u001b[22mUNITED STATES\u001b[0m][\u001b[1m\u001b[31mUS\u001b[0m], \u001b[1mHTML5\u001b[0m, \u001b[1mIP\u001b[0m[\u001b[0m\u001b[22m23.215.0.136\u001b[0m], \u001b[1mTitle\u001b[0m[\u001b[1m\u001b[33mExample Domain\u001b[0m]\n]\n"
+        },
+        "screenshots": {
+            "http://example.com": "/tmp/http_example.com.png",
+            "https://example.com": "/tmp/https_example.com.png"
+        }
+    }
+}

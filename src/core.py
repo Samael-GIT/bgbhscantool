@@ -6,20 +6,65 @@ import json
 import re
 import logging
 import socket
-import requests
-import dns.resolver
+
+# Gestion améliorée des importations de modules externes
+dns = None
+requests = None
+
+# Import avec gestion d'erreurs pour requests
+try:
+    import requests
+except ImportError:
+    print("Module 'requests' manquant. Installation recommandée: pip install requests")
+    print("Certaines fonctionnalités seront désactivées.")
+
+# Import avec gestion d'erreurs pour dns
+try:
+    import dns.resolver
+except ImportError:
+    try:
+        # Parfois le module est disponible sous le nom dnspython
+        import dnspython as dns
+    except ImportError:
+        print("Module 'dnspython' manquant. Installation recommandée: pip install dnspython")
+        print("La résolution DNS sera limitée aux outils système.")
+
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from utils import run_command, parse_tool_output
+# Correction des chemins d'importation pour utils
+import sys
+import os
+
+# Ajouter les chemins d'importation
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Vérifier que le chemin actuel est dans le chemin pour les importationsn
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+# Vérifier que le répertoire parent est dans le chemin pour les importations
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Importation directe depuis utils plutôt que depuis src.utils ou .utils
+try:
+    from utils import run_command, parse_tool_output, load_config
+except ImportError:
+    try:
+        # Essayer le chemin absolu si l'importation directe échoue
+        from utils import run_command, parse_tool_output, load_config
+    except ImportError as e:
+        print(f"ERREUR CRITIQUE: Impossible d'importer utils: {e}")
+        print(f"Chemin Python actuel: {sys.path}")
+        print("Veuillez exécuter 'bgbhscan debug' pour diagnostiquer le problème.")
+        sys.exit(1)
 
 logger = logging.getLogger(__name__)
-
-def load_tools_config():
-    """Charge la configuration des outils depuis tools.json"""
-    config_path = Path(__file__).resolve().parent.parent / "config" / "tools.json"
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 def passive_recon(target, config):
     """
@@ -47,7 +92,7 @@ def passive_recon(target, config):
         logger.error(f"Erreur lors de la collecte WHOIS: {e}")
         results["whois"] = {"error": str(e)}
     
-    # 2. DNS Enumeration - en utilisant dnspython plutôt qu'un outil externe
+    # 2. DNS Enumeration avec fallback si dnspython n'est pas disponible
     try:
         if tools.get("dig", {}).get("enabled", True):
             logger.debug("Énumération DNS")
@@ -56,8 +101,18 @@ def passive_recon(target, config):
             
             for record_type in record_types:
                 try:
-                    answers = dns.resolver.resolve(target, record_type)
-                    dns_records[record_type] = [str(answer) for answer in answers]
+                    # Essayer d'abord avec dnspython s'il est disponible
+                    if dns is not None and hasattr(dns, 'resolver'):
+                        answers = dns.resolver.resolve(target, record_type)
+                        dns_records[record_type] = [str(answer) for answer in answers]
+                    else:
+                        # Fallback sur dig si dnspython n'est pas disponible
+                        dig_cmd = f"dig +short {target} {record_type}"
+                        dig_output = run_command(dig_cmd)
+                        if dig_output:
+                            dns_records[record_type] = dig_output.strip().split('\n')
+                        else:
+                            dns_records[record_type] = []
                 except Exception:
                     dns_records[record_type] = []
             
@@ -66,7 +121,7 @@ def passive_recon(target, config):
         logger.error(f"Erreur lors de l'énumération DNS: {e}")
         results["dns"] = {"error": str(e)}
     
-    # 3. Sous-domaines - utilisation de techniques sans API
+    # 3. Sous-domaines 
     try:
         logger.debug("Recherche de sous-domains via les certificats SSL")
         subdomains = []
@@ -117,7 +172,12 @@ def active_recon(target, ports="1-1000", config=None):
         dict: Résultats de la reconnaissance active
     """
     logger.info(f"Démarrage de la reconnaissance active sur: {target} (ports: {ports})")
-    tools_config = load_tools_config()
+    
+    # Remplacer load_tools_config() par load_config() ou utiliser le paramètre config
+    if config is None:
+        config = load_config()
+    tools_config = config.get("tools", {})
+    
     results = {}
     
     # 1. Scan de ports avec Nmap
@@ -181,7 +241,12 @@ def vulnerability_scan(target, scan_type="full", config=None):
         dict: Résultats du scan de vulnérabilités
     """
     logger.info(f"Démarrage du scan de vulnérabilités sur: {target} (type: {scan_type})")
-    tools_config = load_tools_config()
+    
+    # Correction: Utilisez directement load_config() au lieu de load_tools_config()
+    if config is None:
+        config = load_config()
+    tools_config = config.get("tools", {})
+    
     results = {}
     
     # 1. Scan Web avec Nikto si scan_type est 'web' ou 'full'
@@ -228,16 +293,19 @@ def vulnerability_scan(target, scan_type="full", config=None):
         else:
             url = target
             
-        response = requests.get(url, timeout=10, verify=False)
-        headers = response.headers
-        
-        security_headers = {
-            "X-XSS-Protection": headers.get("X-XSS-Protection"),
-            "X-Content-Type-Options": headers.get("X-Content-Type-Options"),
-            "Content-Security-Policy": headers.get("Content-Security-Policy"),
-            "X-Frame-Options": headers.get("X-Frame-Options"),
-            "Strict-Transport-Security": headers.get("Strict-Transport-Security")
-        }
+        if requests:
+            response = requests.get(url, timeout=10, verify=False)
+            headers = response.headers
+            
+            security_headers = {
+                "X-XSS-Protection": headers.get("X-XSS-Protection"),
+                "X-Content-Type-Options": headers.get("X-Content-Type-Options"),
+                "Content-Security-Policy": headers.get("Content-Security-Policy"),
+                "X-Frame-Options": headers.get("X-Frame-Options"),
+                "Strict-Transport-Security": headers.get("Strict-Transport-Security")
+            }
+        else:
+            security_headers = {"error": "Module requests non disponible"}
         
         results["security_headers"] = security_headers
     except Exception as e:
@@ -296,6 +364,9 @@ def exploit_vulnerabilities(target, vuln=None, config=None):
 # Fonctions auxiliaires pour l'exploitation
 def test_sqli(target):
     """Test simple d'injection SQL"""
+    if not requests:
+        return {"error": "Module requests non disponible"}
+        
     payloads = ["' OR '1'='1", "' OR '1'='1' --", "' UNION SELECT 1,2,3 --"]
     results = {}
     
@@ -323,6 +394,9 @@ def test_sqli(target):
 
 def test_xss(target):
     """Test simple de XSS"""
+    if not requests:
+        return {"error": "Module requests non disponible"}
+        
     payloads = ["<script>alert(1)</script>", "<img src=x onerror=alert(1)>"]
     results = {}
     
@@ -350,6 +424,9 @@ def test_xss(target):
 
 def test_dir_traversal(target):
     """Test simple de directory traversal"""
+    if not requests:
+        return {"error": "Module requests non disponible"}
+        
     payloads = ["../../../etc/passwd", "..%2f..%2f..%2fetc%2fpasswd", "....//....//....//etc//passwd"]
     results = {}
     

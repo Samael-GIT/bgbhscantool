@@ -6,15 +6,16 @@
 set -e
 echo "=== BgBhScan - Installation ==="
 
+# Définir les chemins
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PATH="$SCRIPT_DIR/venv"
+MAIN_SCRIPT="$SCRIPT_DIR/src/main.py"
+
 # Vérifier si Python est installé
 if ! command -v python3 &> /dev/null; then
     echo "Python 3 n'est pas installé. Veuillez l'installer avant de continuer."
     exit 1
 fi
-
-# Définir les chemins
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="$SCRIPT_DIR/venv"
 
 # Vérifier si pyenv est installé
 if command -v pyenv &> /dev/null; then
@@ -56,37 +57,149 @@ fi
 # Créer les dossiers nécessaires
 echo "Préparation de l'environnement..."
 mkdir -p "$SCRIPT_DIR/reports"
+mkdir -p "$SCRIPT_DIR/config" 2>/dev/null || true
 
-# Rendre les scripts exécutables
+# Créer le fichier de configuration unique
+if [ ! -f "$SCRIPT_DIR/config/tools.json" ]; then
+    echo "Création du fichier de configuration..."
+    cat > "$SCRIPT_DIR/config/tools.json" << 'EOL'
+{
+    "version": "1.0.0",
+    "logging": {
+        "level": "INFO",
+        "file": "bgbhscan.log"
+    },
+    "output": {
+        "directory": "reports",
+        "formats": ["json", "html"]
+    },
+    "tools": {
+        "nmap": {
+            "path": "nmap",
+            "enabled": true,
+            "arguments": "-sV -sC"
+        },
+        "whois": {
+            "path": "whois",
+            "enabled": true
+        },
+        "whatweb": {
+            "path": "whatweb",
+            "enabled": true,
+            "arguments": "-a 3"
+        },
+        "nikto": {
+            "path": "nikto",
+            "enabled": true
+        },
+        "cutycapt": {
+            "path": "cutycapt",
+            "enabled": true
+        },
+        "zap": {
+            "path": "zap-cli",
+            "enabled": false
+        }
+    },
+    "settings": {
+        "passive": {
+            "timeout": 120,
+            "enable_whois": true,
+            "enable_dns": true
+        },
+        "active": {
+            "timeout": 300,
+            "max_threads": 10,
+            "ports_default": "1-1000"
+        },
+        "vulnerability": {
+            "timeout": 600,
+            "max_threads": 5
+        },
+        "proxy": {
+            "enable": false,
+            "http": "",
+            "https": "",
+            "socks": ""
+        }
+    }
+}
+EOL
+fi
+
+# Supprimer l'ancien fichier config.json s'il existe
+if [ -f "$SCRIPT_DIR/config/config.json" ]; then
+    echo "Suppression de l'ancien fichier config.json..."
+    rm -f "$SCRIPT_DIR/config/config.json"
+fi
+
+# Rendre les scripts exécutables et ajouter le shebang approprié
+echo "Configuration des scripts Python..."
 chmod +x "$SCRIPT_DIR/src/main.py"
 chmod +x "$SCRIPT_DIR/src/core.py"
 chmod +x "$SCRIPT_DIR/src/utils.py"
 
-# Créer un script d'activation pour faciliter l'utilisation
-cat > "$SCRIPT_DIR/run.sh" << 'EOL'
-#!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-if [ -d "$SCRIPT_DIR/venv" ]; then
-    source "$SCRIPT_DIR/venv/bin/activate"
-    python3 "$SCRIPT_DIR/src/main.py" "$@"
-    deactivate
-else
-    # Si pyenv est utilisé
-    export PYENV_VERSION=bgbhscan-env 2>/dev/null || true
-    python3 "$SCRIPT_DIR/src/main.py" "$@"
+# Vérifier si le shebang est correct dans le script principal
+if ! grep -q "#!/usr/bin/env python3" "$MAIN_SCRIPT"; then
+    # Ajouter le shebang au début du fichier
+    sed -i '1s/^/#!/usr/bin/env python3\n/' "$MAIN_SCRIPT"
 fi
-EOL
 
-chmod +x "$SCRIPT_DIR/run.sh"
+# Ajouter une section d'activation d'environnement au script principal
+if ! grep -q "__activate_venv()" "$MAIN_SCRIPT"; then
+    cat >> "$MAIN_SCRIPT" << 'EOL'
+
+# Fonction d'activation automatique de l'environnement virtuel
+def __activate_venv():
+    import os
+    import sys
+    from pathlib import Path
+    
+    # Trouver le chemin de base de l'installation
+    script_path = Path(__file__).resolve()
+    base_dir = script_path.parent.parent
+    
+    # Vérifier et activer l'environnement virtuel si nécessaire
+    venv_path = base_dir / "venv"
+    if venv_path.exists():
+        venv_bin = venv_path / "bin"
+        if not sys.prefix.startswith(str(venv_path)):
+            # L'environnement n'est pas activé, on doit le faire manuellement
+            import subprocess
+            
+            # Réexécuter le script avec l'interpréteur Python de l'environnement virtuel
+            python_path = venv_bin / "python"
+            os.execv(str(python_path), [str(python_path)] + sys.argv)
+
+# Activer l'environnement virtuel si ce script est exécuté directement
+if __name__ == "__main__":
+    __activate_venv()
+EOL
+fi
+
+# Installer la commande dans le système
+echo "Installation de la commande bgbhscan dans le système..."
+
+# Si l'utilisateur est root ou sudo est utilisé
+if [ "$(id -u)" -eq 0 ]; then
+    # Créer un lien symbolique dans /usr/local/bin
+    ln -sf "$MAIN_SCRIPT" /usr/local/bin/bgbhscan
+    echo "Commande 'bgbhscan' installée dans /usr/local/bin/"
+else
+    # Ajouter au PATH local
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$MAIN_SCRIPT" "$HOME/.local/bin/bgbhscan"
+    echo "Commande 'bgbhscan' installée dans $HOME/.local/bin/"
+    
+    # Vérifier si ~/.local/bin est dans PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        echo "Note: Assurez-vous que \$HOME/.local/bin est dans votre PATH."
+        echo "Vous pouvez l'ajouter avec: export PATH=\$HOME/.local/bin:\$PATH"
+        echo "Et l'ajouter à votre .bashrc ou .zshrc pour le rendre permanent."
+    fi
+fi
 
 echo ""
 echo "=== Installation terminée ==="
-echo "Pour utiliser BgBhScan:"
-echo "1. Soit avec le script d'activation: ./run.sh [commande] -t [cible]"
-echo "2. Soit en activant manuellement l'environnement:"
-echo "   - Si vous utilisez venv: source $VENV_PATH/bin/activate"
-echo "   - Si vous utilisez pyenv: pyenv activate bgbhscan-env"
-echo "   Puis exécutez: python3 src/main.py [commande] -t [cible]"
-echo ""
-echo "Exemple: ./run.sh passive -t exemple.com"
+echo "Vous pouvez maintenant utiliser BgBhScan avec la commande: bgbhscan [commande] -t [cible]"
+echo "Exemple: bgbhscan passive -t exemple.com"

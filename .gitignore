@@ -1,0 +1,30 @@
+# Dossier privé, ne pas publier sur GitHub
+/private/
+
+# Environnement virtuel
+/venv/
+/.venv/
+/env/
+/.env
+
+# Fichiers de cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Fichiers générés
+/reports/
+*.log
+*.tmp
+
+# Fichiers de configuration locaux
+/config/local_config.json
+
+# Fichiers d'IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Autres fichiers spécifiques
+.DS_Store
