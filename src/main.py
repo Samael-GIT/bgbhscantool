@@ -7,6 +7,13 @@ import sys
 import warnings
 from pathlib import Path
 
+# Ajouter les chemins d'importation
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 # Correction des chemins d'importation
 def _fix_import_paths():
     """Corriger les chemins d'importation pour permettre l'exécution du script"""
