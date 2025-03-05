@@ -7,33 +7,21 @@ import sys
 import warnings
 from pathlib import Path
 
-# Fonction d'activation automatique de l'environnement virtuel
-def __activate_venv():
-    """Active l'environnement virtuel si nécessaire."""
-    script_path = Path(__file__).resolve()
-    base_dir = script_path.parent.parent
-    
-    venv_path = base_dir / "venv"
-    if venv_path.exists():
-        venv_bin = venv_path / "bin"
-        if not sys.prefix.startswith(str(venv_path)):
-            python_path = venv_bin / "python"
-            if python_path.exists():
-                print(f"Activation de l'environnement virtuel: {venv_path}")
-                os.execv(str(python_path), [str(python_path)] + sys.argv)
-
-# Activer l'environnement virtuel
-__activate_venv()
-
 # Correction des chemins d'importation
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
+def _fix_import_paths():
+    """Corriger les chemins d'importation pour permettre l'exécution du script"""
+    script_path = Path(__file__).resolve()
+    src_dir = script_path.parent
+    base_dir = src_dir.parent
+    
+    # Ajouter les chemins nécessaires au sys.path
+    if str(src_dir) not in sys.path:
+        sys.path.insert(0, str(src_dir))
+    if str(base_dir) not in sys.path:
+        sys.path.insert(0, str(base_dir))
 
-# Ajouter les répertoires au PYTHONPATH
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+# Appliquer la correction des chemins immédiatement
+_fix_import_paths()
 
 # Supprimer les avertissements SSL
 warnings.filterwarnings("ignore", category=Warning)
@@ -48,16 +36,15 @@ except ImportError:
         print("Vérifiez que le fichier debug.py est présent dans le répertoire src/.")
         sys.exit(1)
 
-# Import des modules principaux avec gestion d'erreurs
+# Importer les modules nécessaires
 try:
-    from core import passive_recon, active_recon, vulnerability_scan, exploit_vulnerabilities  
     from utils import setup_logging, generate_report, banner, load_config
     from ui import ConsoleUI
+    from core import passive_recon, active_recon, vulnerability_scan, exploit_vulnerabilities
     import_successful = True
 except ImportError as e:
     print(f"\033[91mERREUR D'IMPORTATION:\033[0m {e}")
     print(f"Chemin Python actuel: {sys.path}")
-    print(f"\033[93mPassage en mode debug pour résoudre le problème...\033[0m")
     import_successful = False
 
 def main():

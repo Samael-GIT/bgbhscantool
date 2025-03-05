@@ -37,6 +37,13 @@ def setup_logging(level="INFO"):
     
     return logging.getLogger(__name__)
 
+def get_base_dir():
+    """Retourne le répertoire de base de l'installation."""
+    bgbhscan_root = os.environ.get('BGBHSCAN_ROOT')
+    if bgbhscan_root:
+        return Path(bgbhscan_root)
+    return Path(__file__).resolve().parent.parent
+
 def load_config():
     """
     Charge la configuration depuis le fichier tools.json
@@ -44,11 +51,13 @@ def load_config():
     Returns:
         dict: Configuration chargée ou dictionnaire vide en cas d'erreur
     """
-    # Essayer différents chemins pour trouver le fichier de configuration
+    base_dir = get_base_dir()
+    
+    # Chercher la configuration dans l'ordre de priorité
     possible_paths = [
-        Path(__file__).resolve().parent.parent / "config" / "tools.json",
-        Path(__file__).resolve().parent.parent / "config" / "config.json",
+        base_dir / "config" / "tools.json",
         Path.home() / ".config" / "bgbhscan" / "config.json",
+        Path("/etc/bgbhscan/config.json")
     ]
     
     for config_path in possible_paths:

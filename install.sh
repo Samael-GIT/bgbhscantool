@@ -11,6 +11,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PATH="$SCRIPT_DIR/venv"
 MAIN_SCRIPT="$SCRIPT_DIR/src/main.py"
 
+# Permettre l'installation dans n'importe quel répertoire
+INSTALL_DIR=${INSTALL_DIR:-"$HOME/.local/share/bgbhscan"}
+
+# Créer le répertoire d'installation s'il n'existe pas
+mkdir -p "$INSTALL_DIR"
+
+# Copier les fichiers nécessaires
+cp -r "$SCRIPT_DIR/src" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/config" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/"
+
+# Créer l'environnement virtuel dans le nouveau répertoire
+VENV_PATH="$INSTALL_DIR/venv"
+
 # Vérifier si Python est installé
 if ! command -v python3 &> /dev/null; then
     echo "Python 3 n'est pas installé. Veuillez l'installer avant de continuer."
@@ -177,27 +191,27 @@ if __name__ == "__main__":
 EOL
 fi
 
-# Installer la commande dans le système
+# Modifier l'installation de la commande
 echo "Installation de la commande bgbhscan dans le système..."
+mkdir -p "$HOME/.local/bin"
 
-# Si l'utilisateur est root ou sudo est utilisé
-if [ "$(id -u)" -eq 0 ]; then
-    # Créer un lien symbolique dans /usr/local/bin
-    ln -sf "$MAIN_SCRIPT" /usr/local/bin/bgbhscan
-    echo "Commande 'bgbhscan' installée dans /usr/local/bin/"
+cat > "$HOME/.local/bin/bgbhscan" << EOL
+#!/bin/bash
+VENV_DIR="$SCRIPT_DIR"
+SCRIPT_PATH="\$VENV_DIR/src/main.py"
+
+if [ -f "\$SCRIPT_PATH" ]; then
+    export PYTHONPATH="\$VENV_DIR:\$PYTHONPATH"
+    cd "\$VENV_DIR"  # Se positionner dans le bon répertoire
+    python3 "\$SCRIPT_PATH" "\$@"
 else
-    # Ajouter au PATH local
-    mkdir -p "$HOME/.local/bin"
-    ln -sf "$MAIN_SCRIPT" "$HOME/.local/bin/bgbhscan"
-    echo "Commande 'bgbhscan' installée dans $HOME/.local/bin/"
-    
-    # Vérifier si ~/.local/bin est dans PATH
-    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-        echo "Note: Assurez-vous que \$HOME/.local/bin est dans votre PATH."
-        echo "Vous pouvez l'ajouter avec: export PATH=\$HOME/.local/bin:\$PATH"
-        echo "Et l'ajouter à votre .bashrc ou .zshrc pour le rendre permanent."
-    fi
+    echo "Erreur: BgBhScan n'est pas correctement installé dans \$VENV_DIR"
+    echo "Veuillez exécuter le script d'installation."
+    exit 1
 fi
+EOL
+
+chmod +x "$HOME/.local/bin/bgbhscan"
 
 echo ""
 echo "=== Installation terminée ==="
